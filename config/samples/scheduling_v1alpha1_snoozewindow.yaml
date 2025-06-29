@@ -1,0 +1,9 @@
+apiVersion: scheduling.codeacme.org/v1alpha1
+kind: SnoozeWindow
+metadata:
+  labels:
+    app.kubernetes.io/name: kube-snooze
+    app.kubernetes.io/managed-by: kustomize
+  name: snoozewindow-sample
+spec:
+  # TODO(user): Add fields here
