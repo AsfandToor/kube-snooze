@@ -24,4 +24,30 @@ spec:
     scaleToZero: true
   
   backupConfig:
-    storeInAnnotations: true 
+    storeInAnnotations: true
+---
+# Simple test deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-app
+  namespace: default
+  labels:
+    app: "test-app"
+  annotations:
+    kube-snooze/enabled: "true"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: "test-app"
+  template:
+    metadata:
+      labels:
+        app: "test-app"
+    spec:
+      containers:
+      - name: app
+        image: nginx:latest
+        ports:
+        - containerPort: 80 

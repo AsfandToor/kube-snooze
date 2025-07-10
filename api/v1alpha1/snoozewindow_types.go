@@ -98,8 +98,20 @@ type BackupConfig struct {
 
 // SnoozeWindowStatus defines the observed state of SnoozeWindow.
 type SnoozeWindowStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// LastSnoozeTime tracks when resources were last put into snooze mode
+	LastSnoozeTime *metav1.Time `json:"lastSnoozeTime,omitempty"`
+	// LastWakeTime tracks when resources were last restored from snooze mode
+	LastWakeTime *metav1.Time `json:"lastWakeTime,omitempty"`
+	// CurrentState indicates whether resources are currently snoozed or awake
+	CurrentState string `json:"currentState,omitempty"`
+	// NextSnoozeTime indicates when the next snooze action will occur
+	NextSnoozeTime *metav1.Time `json:"nextSnoozeTime,omitempty"`
+	// NextWakeTime indicates when the next wake action will occur
+	NextWakeTime *metav1.Time `json:"nextWakeTime,omitempty"`
+	// ManagedResources tracks the number of resources being managed
+	ManagedResources int32 `json:"managedResources,omitempty"`
+	// Conditions represents the latest available observations of a SnoozeWindow's current state
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -1,135 +1,264 @@
-# kube-snooze
-// TODO(user): Add simple overview of use/purpose
+# Kube-Snooze
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+A Kubernetes operator that automatically scales down or deletes resources during quiet times to save costs and resources.
 
-## Getting Started
+## 🔧 Core Features
 
-### Prerequisites
-- go version v1.24.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+### Custom Resource Definition (CRD)
+- **SnoozeWindow CRD** to define snooze rules (resources, schedules, conditions)
+- Example fields: resources, namespace, labelSelector, snoozeSchedule, wakeSchedule, timezone
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
+### Schedule-based Snoozing
+- **Cron expression support** for flexible scheduling
+- **Timezone support** for global deployments
+- **Weekday/weekend differentiation**
+- **RFC3339 time format** support for one-time events
 
-```sh
-make docker-build docker-push IMG=<some-registry>/kube-snooze:tag
+### Resource Types Handling
+- Support for **Deployments**, **StatefulSets**, **CronJobs**, **Jobs**, **Pods**
+- Optionally **scale to zero**, **delete**, or **patch** resources
+- **Backup & restore** original replicas/state
+
+### Wake Mechanism
+- **Restore replicas** to previous state from annotations
+- **Wake up at scheduled time** or on-demand
+- **State preservation** during snooze periods
+
+### Annotation & Label Opt-in/Opt-out
+- Use annotations (e.g., `kube-snooze/enabled: true`) to select resources for snoozing
+- **Label selectors** to include/exclude resources
+- **Policy-based management** with multiple snooze windows
+
+## 🚀 Quick Start
+
+### 1. Install the Operator
+
+```bash
+# Apply CRDs
+kubectl apply -f config/crd/bases/
+
+# Apply RBAC
+kubectl apply -f config/rbac/
+
+# Deploy the operator
+kubectl apply -f config/manager/
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
+### 2. Create a SnoozeWindow
 
-**Install the CRDs into the cluster:**
-
-```sh
-make install
+```yaml
+apiVersion: scheduling.codeacme.org/v1alpha1
+kind: SnoozeWindow
+metadata:
+  name: weekend-snooze
+  namespace: default
+spec:
+  labelSelector:
+    app: "my-app"
+    environment: "development"
+  
+  snoozeSchedule:
+    cronExpression: "0 18 * * 1-5"  # Weekdays at 6 PM
+  
+  wakeSchedule:
+    cronExpression: "0 8 * * 1-5"   # Weekdays at 8 AM
+  
+  timezone: "America/New_York"
+  
+  resourceTypes:
+    - kind: "Deployment"
+      apiVersion: "apps/v1"
+      scaleToZero: true
+  
+  snoozeAction:
+    scaleToZero: true
+  
+  backupConfig:
+    storeInAnnotations: true
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+### 3. Annotate Resources
 
-```sh
-make deploy IMG=<some-registry>/kube-snooze:tag
+Add the following annotation to resources you want to manage:
+
+```yaml
+metadata:
+  annotations:
+    kube-snooze/enabled: "true"
 ```
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
+## 📋 Usage Examples
 
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
+### Basic Weekend Snoozing
 
-```sh
-kubectl apply -k config/samples/
+```yaml
+apiVersion: scheduling.codeacme.org/v1alpha1
+kind: SnoozeWindow
+metadata:
+  name: weekend-snooze
+spec:
+  labelSelector:
+    environment: "development"
+  
+  snoozeSchedule:
+    cronExpression: "0 18 * * 5"  # Friday at 6 PM
+  
+  wakeSchedule:
+    cronExpression: "0 8 * * 1"   # Monday at 8 AM
+  
+  resourceTypes:
+    - kind: "Deployment"
+      apiVersion: "apps/v1"
+      scaleToZero: true
+  
+  snoozeAction:
+    scaleToZero: true
 ```
 
->**NOTE**: Ensure that the samples has default values to test it out.
+### Night-time Snoozing with Custom Patch
 
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
+```yaml
+apiVersion: scheduling.codeacme.org/v1alpha1
+kind: SnoozeWindow
+metadata:
+  name: night-snooze
+spec:
+  labelSelector:
+    app: "database"
+  
+  snoozeSchedule:
+    cronExpression: "0 22 * * *"  # Daily at 10 PM
+  
+  wakeSchedule:
+    cronExpression: "0 6 * * *"   # Daily at 6 AM
+  
+  resourceTypes:
+    - kind: "StatefulSet"
+      apiVersion: "apps/v1"
+      scaleToZero: true
+  
+  snoozeAction:
+    patch:
+      type: "strategic"
+      data: '{"spec":{"replicas":0,"template":{"spec":{"containers":[{"name":"db","resources":{"requests":{"cpu":"10m","memory":"10Mi"}}}]}}}}'
 ```
 
-**Delete the APIs(CRDs) from the cluster:**
+### Delete Jobs and CronJobs
 
-```sh
-make uninstall
+```yaml
+apiVersion: scheduling.codeacme.org/v1alpha1
+kind: SnoozeWindow
+metadata:
+  name: cleanup-jobs
+spec:
+  labelSelector:
+    app: "batch-processing"
+  
+  snoozeSchedule:
+    cronExpression: "0 0 * * 0"  # Sunday at midnight
+  
+  wakeSchedule:
+    cronExpression: "0 8 * * 1"  # Monday at 8 AM
+  
+  resourceTypes:
+    - kind: "CronJob"
+      apiVersion: "batch/v1"
+      delete: true
+    - kind: "Job"
+      apiVersion: "batch/v1"
+      delete: true
+  
+  snoozeAction:
+    delete: true
 ```
 
-**UnDeploy the controller from the cluster:**
+## 🔍 Monitoring
 
-```sh
-make undeploy
+### Check SnoozeWindow Status
+
+```bash
+kubectl get snoozewindows
+kubectl describe snoozewindow weekend-snooze
 ```
 
-## Project Distribution
+### View Managed Resources
 
-Following the options to release and provide this solution to the users.
-
-### By providing a bundle with all YAML files
-
-1. Build the installer for the image built and published in the registry:
-
-```sh
-make build-installer IMG=<some-registry>/kube-snooze:tag
+```bash
+# List resources with snooze annotations
+kubectl get deployments,statefulsets,cronjobs -A -o jsonpath='{range .items[?(@.metadata.annotations.kube-snooze/enabled=="true")]}{.kind}/{.metadata.namespace}/{.metadata.name}{"\n"}{end}'
 ```
 
-**NOTE:** The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without its
-dependencies.
+### Check Backup State
 
-2. Using the installer
-
-Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
-the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/kube-snooze/<tag or branch>/dist/install.yaml
+```bash
+# View backup annotations
+kubectl get deployment my-app -o jsonpath='{.metadata.annotations.kube-snooze/backup-replicas}'
 ```
 
-### By providing a Helm Chart
+## 🏗️ Architecture
 
-1. Build the chart using the optional helm plugin
+### Controller Logic
 
-```sh
-kubebuilder edit --plugins=helm/v1-alpha
-```
+1. **Schedule Evaluation**: Uses cron expressions to determine when to snooze/wake
+2. **Resource Discovery**: Finds resources matching label selectors and annotations
+3. **State Backup**: Stores original state in annotations before snoozing
+4. **Action Application**: Scales, deletes, or patches resources as configured
+5. **State Restoration**: Restores original state when waking
 
-2. See that a chart was generated under 'dist/chart', and users
-can obtain this solution from there.
+### Resource Management
 
-**NOTE:** If you change the project, you need to update the Helm Chart
-using the same command above to sync the latest changes. Furthermore,
-if you create webhooks, you need to use the above command with
-the '--force' flag and manually ensure that any custom configuration
-previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
-is manually re-applied afterwards.
+- **Deployments/StatefulSets**: Scale to zero replicas
+- **CronJobs/Jobs**: Delete entirely
+- **Custom Patches**: Apply strategic merge patches
+- **State Backup**: Store in annotations or ConfigMaps
 
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+### Scheduling
 
-**NOTE:** Run `make help` for more information on all potential `make` targets
+- **Cron Expressions**: Standard cron format support
+- **Timezone Support**: Local timezone calculations
+- **Weekday/Weekend**: Flexible day-of-week filtering
+- **RFC3339**: One-time event scheduling
 
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+## 🔧 Configuration
 
-## License
+### SnoozeWindow Spec Fields
 
-Copyright 2025.
+| Field | Type | Description |
+|-------|------|-------------|
+| `namespace` | string | Target namespace (optional) |
+| `labelSelector` | map[string]string | Resource selector |
+| `snoozeSchedule` | ScheduleConfig | When to snooze |
+| `wakeSchedule` | ScheduleConfig | When to wake |
+| `timezone` | string | Timezone for schedules |
+| `resourceTypes` | []ResourceType | Types to manage |
+| `snoozeAction` | SnoozeAction | What action to take |
+| `backupConfig` | BackupConfig | How to backup state |
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+### Annotations
 
-    http://www.apache.org/licenses/LICENSE-2.0
+| Annotation | Value | Description |
+|------------|-------|-------------|
+| `kube-snooze/enabled` | "true" | Enable snoozing for this resource |
+| `kube-snooze/policy` | "policy-name" | Associate with specific policy |
+| `kube-snooze/backup-full-state` | "true" | Backup complete resource state |
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+## 🚨 Best Practices
+
+1. **Test in Development**: Always test snooze policies in development first
+2. **Use Labels**: Use meaningful labels for resource selection
+3. **Backup State**: Enable state backup for critical resources
+4. **Monitor Schedules**: Verify cron expressions work as expected
+5. **Gradual Rollout**: Start with non-critical resources
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0.
 

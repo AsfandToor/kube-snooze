@@ -59,3 +59,92 @@ spec:
     storeInAnnotations: true
     storeInConfigMap: false
     configMapName: "snooze-backup"
+---
+# Example deployment that will be managed by kube-snooze
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-app
+  namespace: default
+  labels:
+    app: "my-app"
+    environment: "development"
+  annotations:
+    kube-snooze/enabled: "true"
+    kube-snooze/policy: "weekend-snooze-policy"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: "my-app"
+  template:
+    metadata:
+      labels:
+        app: "my-app"
+    spec:
+      containers:
+      - name: app
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+---
+# Example StatefulSet that will be managed by kube-snooze
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: example-database
+  namespace: default
+  labels:
+    app: "my-app"
+    environment: "development"
+  annotations:
+    kube-snooze/enabled: "true"
+    kube-snooze/policy: "weekend-snooze-policy"
+spec:
+  replicas: 1
+  serviceName: "example-database"
+  selector:
+    matchLabels:
+      app: "my-app"
+  template:
+    metadata:
+      labels:
+        app: "my-app"
+    spec:
+      containers:
+      - name: database
+        image: postgres:13
+        env:
+        - name: POSTGRES_DB
+          value: "example"
+        - name: POSTGRES_PASSWORD
+          value: "password"
+        ports:
+        - containerPort: 5432
+---
+# Example CronJob that will be managed by kube-snooze
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: example-backup
+  namespace: default
+  labels:
+    app: "my-app"
+    environment: "development"
+  annotations:
+    kube-snooze/enabled: "true"
+    kube-snooze/policy: "weekend-snooze-policy"
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backup
+            image: busybox:latest
+            command:
+            - /bin/sh
+            - -c
+            - echo "Backup completed"
+          restartPolicy: OnFailure
