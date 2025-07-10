@@ -47,7 +47,14 @@ type SnoozeWindowReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
 func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = logf.FromContext(ctx)
+	logger := logf.FromContext(ctx)
+	snoozeWindow := &schedulingv1alpha1.SnoozeWindow{}
+	if err := r.Get(ctx, req.NamespacedName, snoozeWindow); err != nil {
+		logger.Error(err, "Failed to get SnoozeWindow")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	logger.Info("SnoozeWindow", "name", snoozeWindow.Name, "namespace", snoozeWindow.Namespace)
 
 	return ctrl.Result{}, nil
 }

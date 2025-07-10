@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -81,9 +82,9 @@ type SnoozeAction struct {
 
 type Patch struct {
 	// Type specifies the patch strategy ("strategic", "merge", or "json")
-	Type string `json:"type"` // strategic, merge, json
+	Type string `json:"type"`
 	// Data contains the patch data to apply to resources
-	Data map[string]interface{} `json:"data"`
+	Data apiextensionsv1.JSON `json:"data"`
 }
 
 type BackupConfig struct {
@@ -93,12 +94,6 @@ type BackupConfig struct {
 	StoreInConfigMap bool `json:"storeInConfigMap,omitempty"`
 	// ConfigMapName specifies the name of the ConfigMap to store backup data
 	ConfigMapName string `json:"configMapName,omitempty"`
-}
-
-type NamespaceSelector struct {
-	MatchLabels      map[string]string                 `json:"matchLabels,omitempty"`
-	MatchExpressions []metav1.LabelSelectorRequirement `json:"matchExpressions,omitempty"`
-	MatchName        string                            `json:"matchName,omitempty"`
 }
 
 // SnoozeWindowStatus defines the observed state of SnoozeWindow.

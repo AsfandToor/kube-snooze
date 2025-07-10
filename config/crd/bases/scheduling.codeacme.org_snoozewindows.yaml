@@ -39,18 +39,155 @@ spec:
           spec:
             description: SnoozeWindowSpec defines the desired state of SnoozeWindow.
             properties:
-              endTime:
+              backupConfig:
+                description: BackupConfig defines how to store original resource state
+                  before snoozing
+                properties:
+                  configMapName:
+                    description: ConfigMapName specifies the name of the ConfigMap
+                      to store backup data
+                    type: string
+                  storeInAnnotations:
+                    description: StoreInAnnotations saves original state in resource
+                      annotations
+                    type: boolean
+                  storeInConfigMap:
+                    description: StoreInConfigMap saves original state in a ConfigMap
+                    type: boolean
+                type: object
+              labelSelector:
+                additionalProperties:
+                  type: string
+                description: LabelSelector defines key-value pairs to match resources
+                  for snoozing
+                type: object
+              namespace:
+                description: Namespace specifies the Kubernetes namespace to apply
+                  snooze policies to
                 type: string
-              selector:
+              resourceTypes:
+                description: ResourceTypes specifies which Kubernetes resource types
+                  to manage
+                items:
+                  properties:
+                    apiVersion:
+                      description: APIVersion specifies the Kubernetes API version
+                        (e.g., "apps/v1")
+                      type: string
+                    delete:
+                      description: Delete determines if this resource type should
+                        be deleted during snooze
+                      type: boolean
+                    kind:
+                      description: Kind specifies the Kubernetes resource kind (e.g.,
+                        "Deployment", "StatefulSet")
+                      type: string
+                    patch:
+                      description: Patch defines custom patches to apply to this resource
+                        type during snooze
+                      properties:
+                        data:
+                          description: Data contains the patch data to apply to resources
+                          x-kubernetes-preserve-unknown-fields: true
+                        type:
+                          description: Type specifies the patch strategy ("strategic",
+                            "merge", or "json")
+                          type: string
+                      required:
+                      - data
+                      - type
+                      type: object
+                    scaleToZero:
+                      description: ScaleToZero determines if this resource type should
+                        be scaled to zero replicas
+                      type: boolean
+                  required:
+                  - apiVersion
+                  - kind
+                  type: object
+                type: array
+              snoozeAction:
+                description: SnoozeAction defines what action to take when snoozing
+                  resources
+                properties:
+                  delete:
+                    description: Delete removes resources entirely during snooze
+                    type: boolean
+                  patch:
+                    description: Patch applies custom modifications to resources during
+                      snooze
+                    properties:
+                      data:
+                        description: Data contains the patch data to apply to resources
+                        x-kubernetes-preserve-unknown-fields: true
+                      type:
+                        description: Type specifies the patch strategy ("strategic",
+                          "merge", or "json")
+                        type: string
+                    required:
+                    - data
+                    - type
+                    type: object
+                  scaleToZero:
+                    description: ScaleToZero scales resources to zero replicas during
+                      snooze
+                    type: boolean
+                type: object
+              snoozeSchedule:
+                description: SnoozeSchedule defines when resources should be put into
+                  snooze mode
+                properties:
+                  cronExpression:
+                    description: CronExpression defines a cron schedule (e.g., "0
+                      22 * * 1-5" for weekdays at 10 PM)
+                    type: string
+                  rfc3339Time:
+                    description: RFC3339Time defines a specific point in time using
+                      RFC3339 format
+                    type: string
+                  weekdays:
+                    description: Weekdays specifies which days of the week to apply
+                      the schedule (0=Sunday, 1=Monday, etc.)
+                    items:
+                      type: integer
+                    type: array
+                  weekends:
+                    description: Weekends determines if the schedule should apply
+                      on weekends
+                    type: boolean
+                type: object
+              timezone:
+                description: Timezone specifies the timezone for schedule calculations
+                  (e.g., "UTC", "America/New_York")
                 type: string
-              startTime:
-                type: string
-              timeZone:
-                type: string
+              wakeSchedule:
+                description: WakeSchedule defines when resources should be restored
+                  from snooze mode
+                properties:
+                  cronExpression:
+                    description: CronExpression defines a cron schedule (e.g., "0
+                      22 * * 1-5" for weekdays at 10 PM)
+                    type: string
+                  rfc3339Time:
+                    description: RFC3339Time defines a specific point in time using
+                      RFC3339 format
+                    type: string
+                  weekdays:
+                    description: Weekdays specifies which days of the week to apply
+                      the schedule (0=Sunday, 1=Monday, etc.)
+                    items:
+                      type: integer
+                    type: array
+                  weekends:
+                    description: Weekends determines if the schedule should apply
+                      on weekends
+                    type: boolean
+                type: object
             required:
-            - endTime
-            - startTime
-            - timeZone
+            - resourceTypes
+            - snoozeAction
+            - snoozeSchedule
+            - wakeSchedule
             type: object
           status:
             description: SnoozeWindowStatus defines the observed state of SnoozeWindow.

@@ -1,9 +1,61 @@
 apiVersion: scheduling.codeacme.org/v1alpha1
 kind: SnoozeWindow
 metadata:
-  labels:
-    app.kubernetes.io/name: kube-snooze
-    app.kubernetes.io/managed-by: kustomize
-  name: snoozewindow-sample
+  name: weekend-snooze-policy
+  namespace: default
 spec:
-  # TODO(user): Add fields here
+  # Target namespace for snoozing (optional - defaults to same namespace as CR)
+  namespace: "default"
+  
+  # Label selector to match resources for snoozing
+  labelSelector:
+    app: "my-app"
+    environment: "development"
+  
+  # Schedule for when to snooze resources (weekdays at 6 PM)
+  snoozeSchedule:
+    cronExpression: "0 18 * * 1-5"  # Monday-Friday at 6 PM
+    weekdays: [1, 2, 3, 4, 5]       # Monday through Friday
+    weekends: false
+  
+  # Schedule for when to wake resources (weekdays at 8 AM)
+  wakeSchedule:
+    cronExpression: "0 8 * * 1-5"   # Monday-Friday at 8 AM
+    weekdays: [1, 2, 3, 4, 5]       # Monday through Friday
+    weekends: false
+  
+  # Timezone for schedule calculations
+  timezone: "America/New_York"
+  
+  # Resource types to manage
+  resourceTypes:
+    - kind: "Deployment"
+      apiVersion: "apps/v1"
+      scaleToZero: true
+      delete: false
+    - kind: "StatefulSet"
+      apiVersion: "apps/v1"
+      scaleToZero: true
+      delete: false
+    - kind: "CronJob"
+      apiVersion: "batch/v1"
+      scaleToZero: false
+      delete: true
+    - kind: "Job"
+      apiVersion: "batch/v1"
+      scaleToZero: false
+      delete: true
+  
+  # Action to take when snoozing
+  snoozeAction:
+    scaleToZero: true
+    delete: false
+    patch:
+      type: "strategic"
+      data: '{"spec":{"replicas":0}}'
+  
+  # Backup configuration
+  backupConfig:
+    storeInAnnotations: true
+    storeInConfigMap: false
+    configMapName: "snooze-backup"
