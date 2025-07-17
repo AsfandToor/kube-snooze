@@ -39,158 +39,75 @@ spec:
           spec:
             description: SnoozeWindowSpec defines the desired state of SnoozeWindow.
             properties:
-              backupConfig:
-                description: BackupConfig defines how to store original resource state
-                  before snoozing
-                properties:
-                  configMapName:
-                    description: ConfigMapName specifies the name of the ConfigMap
-                      to store backup data
-                    type: string
-                  storeInAnnotations:
-                    description: StoreInAnnotations saves original state in resource
-                      annotations
-                    type: boolean
-                  storeInConfigMap:
-                    description: StoreInConfigMap saves original state in a ConfigMap
-                    type: boolean
-                type: object
-              labelSelector:
-                additionalProperties:
-                  type: string
-                description: LabelSelector defines key-value pairs to match resources
-                  for snoozing
-                type: object
               namespace:
-                description: Namespace specifies the Kubernetes namespace to apply
-                  snooze policies to
                 type: string
-              resourceTypes:
-                description: ResourceTypes specifies which Kubernetes resource types
-                  to manage
-                items:
-                  properties:
-                    apiVersion:
-                      description: APIVersion specifies the Kubernetes API version
-                        (e.g., "apps/v1")
-                      type: string
-                    delete:
-                      description: Delete determines if this resource type should
-                        be deleted during snooze
-                      type: boolean
-                    kind:
-                      description: Kind specifies the Kubernetes resource kind (e.g.,
-                        "Deployment", "StatefulSet")
-                      type: string
-                    patch:
-                      description: Patch defines custom patches to apply to this resource
-                        type during snooze
-                      properties:
-                        data:
-                          description: Data contains the patch data to apply to resources
-                          x-kubernetes-preserve-unknown-fields: true
-                        type:
-                          description: Type specifies the patch strategy ("strategic",
-                            "merge", or "json")
-                          type: string
-                      required:
-                      - data
-                      - type
-                      type: object
-                    scaleToZero:
-                      description: ScaleToZero determines if this resource type should
-                        be scaled to zero replicas
-                      type: boolean
-                  required:
-                  - apiVersion
-                  - kind
-                  type: object
-                type: array
-              snoozeAction:
-                description: SnoozeAction defines what action to take when snoozing
-                  resources
-                properties:
-                  delete:
-                    description: Delete removes resources entirely during snooze
-                    type: boolean
-                  patch:
-                    description: Patch applies custom modifications to resources during
-                      snooze
-                    properties:
-                      data:
-                        description: Data contains the patch data to apply to resources
-                        x-kubernetes-preserve-unknown-fields: true
-                      type:
-                        description: Type specifies the patch strategy ("strategic",
-                          "merge", or "json")
-                        type: string
-                    required:
-                    - data
-                    - type
-                    type: object
-                  scaleToZero:
-                    description: ScaleToZero scales resources to zero replicas during
-                      snooze
-                    type: boolean
-                type: object
-              snoozeSchedule:
-                description: SnoozeSchedule defines when resources should be put into
-                  snooze mode
-                properties:
-                  cronExpression:
-                    description: CronExpression defines a cron schedule (e.g., "0
-                      22 * * 1-5" for weekdays at 10 PM)
-                    type: string
-                  rfc3339Time:
-                    description: RFC3339Time defines a specific point in time using
-                      RFC3339 format
-                    type: string
-                  weekdays:
-                    description: Weekdays specifies which days of the week to apply
-                      the schedule (0=Sunday, 1=Monday, etc.)
-                    items:
-                      type: integer
-                    type: array
-                  weekends:
-                    description: Weekends determines if the schedule should apply
-                      on weekends
-                    type: boolean
-                type: object
+              snooze_schedule:
+                type: string
               timezone:
-                description: Timezone specifies the timezone for schedule calculations
-                  (e.g., "UTC", "America/New_York")
                 type: string
-              wakeSchedule:
-                description: WakeSchedule defines when resources should be restored
-                  from snooze mode
-                properties:
-                  cronExpression:
-                    description: CronExpression defines a cron schedule (e.g., "0
-                      22 * * 1-5" for weekdays at 10 PM)
-                    type: string
-                  rfc3339Time:
-                    description: RFC3339Time defines a specific point in time using
-                      RFC3339 format
-                    type: string
-                  weekdays:
-                    description: Weekdays specifies which days of the week to apply
-                      the schedule (0=Sunday, 1=Monday, etc.)
-                    items:
-                      type: integer
-                    type: array
-                  weekends:
-                    description: Weekends determines if the schedule should apply
-                      on weekends
-                    type: boolean
-                type: object
+              wake_schedule:
+                type: string
             required:
-            - resourceTypes
-            - snoozeAction
-            - snoozeSchedule
-            - wakeSchedule
+            - timezone
             type: object
           status:
-            description: SnoozeWindowStatus defines the observed state of SnoozeWindow.
+            properties:
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
             type: object
         type: object
     served: true

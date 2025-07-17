@@ -4,28 +4,11 @@ metadata:
   name: simple-snooze
   namespace: default
 spec:
-  labelSelector:
-    app: "test-app"
-  
-  snoozeSchedule:
-    cronExpression: "0 22 * * *"  # Every day at 10 PM
-  
-  wakeSchedule:
-    cronExpression: "0 8 * * *"   # Every day at 8 AM
-  
+  namespace: "default"
+  snooze_schedule: "true"
+  wake_schedule: "false"
   timezone: "UTC"
-  
-  resourceTypes:
-    - kind: "Deployment"
-      apiVersion: "apps/v1"
-      scaleToZero: true
-  
-  snoozeAction:
-    scaleToZero: true
-  
-  backupConfig:
-    storeInAnnotations: true
----
+
 # Simple test deployment
 apiVersion: apps/v1
 kind: Deployment
