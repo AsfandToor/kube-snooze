@@ -22,14 +22,21 @@ import (
 
 // SnoozeWindowSpec defines the desired state of SnoozeWindow.
 type SnoozeWindowSpec struct {
-	Namespace      string `json:"namespace,omitempty"`
-	Timezone       string `json:"timezone"`
-	SnoozeSchedule string `json:"snooze_schedule,omitempty"`
-	WakeSchedule   string `json:"wake_schedule,omitempty"`
+	LabelSelector  map[string]string  `json:"label_selector,omitempty"`
+	Timezone       string             `json:"timezone"`
+	SnoozeSchedule SnoozeScheduleSpec `json:"snooze_schedule,omitempty"`
+	WakeSchedule   string             `json:"wake_schedule,omitempty"`
+}
+
+type SnoozeScheduleSpec struct {
+	StartTime string `json:"start_time"`
+	EndTime   string `json:"end_time"`
+	Date      string `json:"date"`
 }
 
 type SnoozeWindowStatus struct {
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	SleepyInstances int                `json:"sleepy_instances,omitempty"`
+	Conditions      []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true

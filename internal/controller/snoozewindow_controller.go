@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/gorhill/cronexpr"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -64,15 +65,6 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	logger := logf.FromContext(ctx)
 	logger.Info("Fire it up and ready to serve! ~ Blitzcrank")
 
-	var deployment appsv1.Deployment
-
-	if err := r.Get(ctx, req.NamespacedName, &deployment); err != nil {
-		logger.Info("Error Getting Deployments", "error", err)
-		if errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
-	}
-
 	// Fetch the SnoozeWindow instance
 	snoozeWindow := &schedulingv1alpha1.SnoozeWindow{}
 	if err := r.Get(ctx, req.NamespacedName, snoozeWindow); err != nil {
@@ -84,14 +76,40 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 	logger.Info("Reconciling SnoozeWindow", "name", snoozeWindow.Name, "namespace", snoozeWindow.Namespace)
 
-	if snoozeWindow.Spec.SnoozeSchedule == "true" {
-		deployment.Spec.Replicas = pointer.Int32Ptr(0)
-		logger.Info("Updating Deployment", "name", deployment.ObjectMeta.Name)
+	var deployments appsv1.DeploymentList
+
+	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace)); err != nil {
+		logger.Error(err, "failed to list deployments")
+		return ctrl.Result{}, err
 	}
 
-	if err := r.Update(ctx, &deployment); err != nil {
-		return ctrl.Result{}, nil
+	// Optimize it, resort to Bulk Update
+	for _, deploy := range deployments.Items {
+		var isSnoozeEnabled bool
+
+		// Check for matching labels
+		for _, label := range snoozeWindow.Spec.LabelSelector {
+			if deploy.Labels[label] == snoozeWindow.Spec.LabelSelector[label] {
+				isSnoozeEnabled = true
+				break
+			}
+		}
+
+		if isSnoozeEnabled {
+			nextSnoozeSchedule := cronexpr.MustParse(snoozeWindow.Spec.SnoozeSchedule).Next(time.Now())
+			nextWakeSchedule := cronexpr.MustParse(snoozeWindow.Spe)
+
+		}
+
+		if snoozeWindow.Spec.SnoozeSchedule == "" {
+			deploy.Spec.Replicas = pointer.Int32Ptr(0)
+		}
+		if err := r.Update(ctx, &deploy); err != nil {
+			return ctrl.Result{}, nil
+		}
 	}
+
+	snoozeWindow.Status.SleepyInstances = len(deployments.Items)
 
 	// Update status
 	if err := r.Status().Update(ctx, snoozeWindow); err != nil {
