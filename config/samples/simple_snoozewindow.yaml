@@ -1,12 +1,15 @@
 apiVersion: scheduling.codeacme.org/v1alpha1
 kind: SnoozeWindow
 metadata:
-  name: simple-snooze
-  namespace: default
+  name: snooze-nginx
+  namespace: kube-snooze-system
 spec:
-  namespace: "default"
-  snooze_schedule: "true"
-  wake_schedule: "false"
+  label_selector:
+    snooze: enabled
+  snooze_schedule:
+    start_time: "6:20"
+    end_time: "6:25"
+    date: "2025-07-20"
   timezone: "UTC"
 
 # Simple test deployment
@@ -14,9 +17,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-app
-  namespace: default
+  namespace: kube-snooze-system
   labels:
     app: "test-app"
+    snooze: enabled
   annotations:
     kube-snooze/enabled: "true"
 spec:

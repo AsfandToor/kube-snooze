@@ -20,7 +20,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/gorhill/cronexpr"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,6 +29,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	schedulingv1alpha1 "codeacme.org/kube-snooze/api/v1alpha1"
+	"codeacme.org/kube-snooze/internal/utils"
 )
 
 const (
@@ -63,7 +63,7 @@ type SnoozeWindowReconciler struct {
 
 func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := logf.FromContext(ctx)
-	logger.Info("Fire it up and ready to serve! ~ Blitzcrank")
+	logger.Info("Firing up SnoozeScheduler")
 
 	// Fetch the SnoozeWindow instance
 	snoozeWindow := &schedulingv1alpha1.SnoozeWindow{}
@@ -85,27 +85,31 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	// Optimize it, resort to Bulk Update
 	for _, deploy := range deployments.Items {
-		var isSnoozeEnabled bool
+		isSnoozeEnabled := false
 
 		// Check for matching labels
-		for _, label := range snoozeWindow.Spec.LabelSelector {
-			if deploy.Labels[label] == snoozeWindow.Spec.LabelSelector[label] {
-				isSnoozeEnabled = true
-				break
+		for key, val := range snoozeWindow.Spec.LabelSelector {
+				if deploy.Labels[key] == val {
+					logger.Info("SnoozingDeployment", "name", deploy.Name, "label", deploy.Labels[key])
+					isSnoozeEnabled = true
+					break
 			}
 		}
 
+
 		if isSnoozeEnabled {
-			nextSnoozeSchedule := cronexpr.MustParse(snoozeWindow.Spec.SnoozeSchedule).Next(time.Now())
-			nextWakeSchedule := cronexpr.MustParse(snoozeWindow.Spe)
+			isSnoozeActive, err := utils.IsTimeOngoing(snoozeWindow.Spec.SnoozeSchedule.StartTime, snoozeWindow.Spec.SnoozeSchedule.EndTime, snoozeWindow.Spec.SnoozeSchedule.Date)
+			if err != nil {
+				logger.Error(err, "parsing snooze schedule")
+			}
 
-		}
+			if isSnoozeActive {
+				deploy.Spec.Replicas = pointer.Int32Ptr(0)
+			}
 
-		if snoozeWindow.Spec.SnoozeSchedule == "" {
-			deploy.Spec.Replicas = pointer.Int32Ptr(0)
-		}
-		if err := r.Update(ctx, &deploy); err != nil {
-			return ctrl.Result{}, nil
+			if err := r.Update(ctx, &deploy); err != nil {
+				return ctrl.Result{}, nil
+			}
 		}
 	}
 
