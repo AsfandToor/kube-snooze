@@ -112,9 +112,19 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 				deploy.SetAnnotations(map[string]string{
 					"kube-snooze/replicas": replicas,
 				})
+
 			} else {
 				// Make this dynamic and persist in annotations
-				deploy.Spec.Replicas = pointer.Int32Ptr(2)
+				annotations := deploy.GetAnnotations()
+
+				desiredReplicas, err := strconv.ParseInt(annotations["kube-snooze/replicas"], 10, 32)
+				if err != nil {
+					logger.Error(err, "ParsingStoredReplicas")
+				}
+
+				if desiredReplicas > 0 {
+					deploy.Spec.Replicas = pointer.Int32Ptr(int32(desiredReplicas))
+				}
 			}
 
 			if err := r.Update(ctx, &deploy); err != nil {
