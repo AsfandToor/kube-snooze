@@ -105,6 +105,9 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 			if isSnoozeActive {
 				deploy.Spec.Replicas = pointer.Int32Ptr(0)
+			} else {
+				// Make this dynamic and persist in annotations
+				deploy.Spec.Replicas = pointer.Int32Ptr(2)
 			}
 
 			if err := r.Update(ctx, &deploy); err != nil {
@@ -120,9 +123,6 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		logger.Error(err, "Failed to update status")
 		return ctrl.Result{}, err
 	}
-
-	// Return result with next reconciliation time
-	// Simplified Requeue time to check after minutes
 
 	nextReconcile := time.Now().Add(time.Minute)
 	return ctrl.Result{RequeueAfter: time.Until(nextReconcile)}, nil
