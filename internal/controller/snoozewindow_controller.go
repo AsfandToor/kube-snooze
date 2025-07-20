@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -104,7 +105,13 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			}
 
 			if isSnoozeActive {
+				replicas := strconv.Itoa(int(*deploy.Spec.Replicas))
 				deploy.Spec.Replicas = pointer.Int32Ptr(0)
+
+				// Save deployment replicas in the respective annotations.
+				deploy.SetAnnotations(map[string]string{
+					"kube-snooze/replicas": replicas,
+				})
 			} else {
 				// Make this dynamic and persist in annotations
 				deploy.Spec.Replicas = pointer.Int32Ptr(2)
