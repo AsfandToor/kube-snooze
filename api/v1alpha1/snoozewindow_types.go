@@ -22,16 +22,17 @@ import (
 
 // SnoozeWindowSpec defines the desired state of SnoozeWindow.
 type SnoozeWindowSpec struct {
-	LabelSelector  map[string]string  `json:"label_selector,omitempty"`
+	LabelSelector  map[string]string  `json:"labelSelector,omitempty"`
 	Timezone       string             `json:"timezone"`
-	SnoozeSchedule SnoozeScheduleSpec `json:"snooze_schedule,omitempty"`
-	WakeSchedule   string             `json:"wake_schedule,omitempty"`
+	SnoozeSchedule SnoozeScheduleSpec `json:"snoozeSchedule,omitempty"`
 }
 
 type SnoozeScheduleSpec struct {
-	StartTime string `json:"start_time"`
-	EndTime   string `json:"end_time"`
-	Date      string `json:"date"`
+	StartTime string   `json:"startTime"`
+	EndTime   string   `json:"endTime"`
+	Days      []string `json:"days,omitempty"`
+	Frequency string   `json:"frequency,omitempty"`
+	Date      string   `json:"date,omitempty"`
 }
 
 type SnoozeWindowStatus struct {

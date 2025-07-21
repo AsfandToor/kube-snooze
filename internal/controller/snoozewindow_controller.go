@@ -90,13 +90,12 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 		// Check for matching labels
 		for key, val := range snoozeWindow.Spec.LabelSelector {
-				if deploy.Labels[key] == val {
-					logger.Info("SnoozingDeployment", "name", deploy.Name, "label", deploy.Labels[key])
-					isSnoozeEnabled = true
-					break
+			if deploy.Labels[key] == val {
+				logger.Info("SnoozingDeployment", "name", deploy.Name, "label", deploy.Labels[key])
+				isSnoozeEnabled = true
+				break
 			}
 		}
-
 
 		if isSnoozeEnabled {
 			isSnoozeActive, err := utils.IsTimeOngoing(snoozeWindow.Spec.SnoozeSchedule.StartTime, snoozeWindow.Spec.SnoozeSchedule.EndTime, snoozeWindow.Spec.SnoozeSchedule.Date)
@@ -113,6 +112,11 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 					"kube-snooze/replicas": replicas,
 				})
 
+				if err := r.Update(ctx, &deploy); err != nil {
+					logger.Error(err, "DeploymentsUpdateFailed")
+					nextReconcile := time.Now().Add(time.Minute)
+					return ctrl.Result{RequeueAfter: time.Until(nextReconcile)}, err
+				}
 			} else {
 				// Make this dynamic and persist in annotations
 				annotations := deploy.GetAnnotations()
@@ -133,13 +137,14 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	}
 
-	snoozeWindow.Status.SleepyInstances = len(deployments.Items)
-
-	// Update status
-	if err := r.Status().Update(ctx, snoozeWindow); err != nil {
-		logger.Error(err, "Failed to update status")
-		return ctrl.Result{}, err
-	}
+	// Add this block to above part
+	// snoozeWindow.Status.SleepyInstances = len(deployments.Items)
+	//
+	// // Update status
+	// if err := r.Status().Update(ctx, snoozeWindow); err != nil {
+	// 	logger.Error(err, "Failed to update status")
+	// 	return ctrl.Result{}, err
+	// }
 
 	nextReconcile := time.Now().Add(time.Minute)
 	return ctrl.Result{RequeueAfter: time.Until(nextReconcile)}, nil
