@@ -39,26 +39,29 @@ spec:
           spec:
             description: SnoozeWindowSpec defines the desired state of SnoozeWindow.
             properties:
-              label_selector:
+              labelSelector:
                 additionalProperties:
                   type: string
                 type: object
-              snooze_schedule:
+              snoozeSchedule:
                 properties:
                   date:
                     type: string
-                  end_time:
+                  days:
+                    items:
+                      type: string
+                    type: array
+                  endTime:
                     type: string
-                  start_time:
+                  frequency:
+                    type: string
+                  startTime:
                     type: string
                 required:
-                - date
-                - end_time
-                - start_time
+                - endTime
+                - startTime
                 type: object
               timezone:
-                type: string
-              wake_schedule:
                 type: string
             required:
             - timezone

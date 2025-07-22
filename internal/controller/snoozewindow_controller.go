@@ -77,50 +77,43 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 	logger.Info("Reconciling SnoozeWindow", "name", snoozeWindow.Name, "namespace", snoozeWindow.Namespace)
 
+	isSnoozeActive, duration, err := utils.IsTimeOngoing(snoozeWindow.Spec.SnoozeSchedule.StartTime, snoozeWindow.Spec.SnoozeSchedule.EndTime, snoozeWindow.Spec.SnoozeSchedule.Date)
+	if err != nil {
+		logger.Error(err, "parsing snooze schedule")
+	}
+
 	var deployments appsv1.DeploymentList
 
-	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace)); err != nil {
+	labelSelectors := client.MatchingLabels{
+		"kube-snooze/enabled": "true",
+	}
+
+	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), labelSelectors); err != nil {
 		logger.Error(err, "failed to list deployments")
 		return ctrl.Result{}, err
 	}
 
-	// Optimize it, resort to Bulk Update
 	for _, deploy := range deployments.Items {
-		isSnoozeEnabled := false
+		logger.Info("TargetingDeployment", "name", deploy.Name)
+		if isSnoozeActive {
+			replicas := strconv.Itoa(int(*deploy.Spec.Replicas))
+			deploy.Spec.Replicas = pointer.Int32Ptr(0)
 
-		// Check for matching labels
-		for key, val := range snoozeWindow.Spec.LabelSelector {
-			if deploy.Labels[key] == val {
-				logger.Info("SnoozingDeployment", "name", deploy.Name, "label", deploy.Labels[key])
-				isSnoozeEnabled = true
-				break
+			// Save deployment replicas in the respective annotations.
+			deploy.SetAnnotations(map[string]string{
+				"kube-snooze/replicas": replicas,
+			})
+
+			if err := r.Update(ctx, &deploy); err != nil {
+				logger.Error(err, "DeploymentsUpdateFailed")
+				nextReconcile := time.Now().Add(time.Minute)
+				return ctrl.Result{RequeueAfter: time.Until(nextReconcile)}, err
 			}
-		}
+		} else {
+			// Make this dynamic and persist in annotations
+			annotations := deploy.GetAnnotations()
 
-		if isSnoozeEnabled {
-			isSnoozeActive, err := utils.IsTimeOngoing(snoozeWindow.Spec.SnoozeSchedule.StartTime, snoozeWindow.Spec.SnoozeSchedule.EndTime, snoozeWindow.Spec.SnoozeSchedule.Date)
-			if err != nil {
-				logger.Error(err, "parsing snooze schedule")
-			}
-
-			if isSnoozeActive {
-				replicas := strconv.Itoa(int(*deploy.Spec.Replicas))
-				deploy.Spec.Replicas = pointer.Int32Ptr(0)
-
-				// Save deployment replicas in the respective annotations.
-				deploy.SetAnnotations(map[string]string{
-					"kube-snooze/replicas": replicas,
-				})
-
-				if err := r.Update(ctx, &deploy); err != nil {
-					logger.Error(err, "DeploymentsUpdateFailed")
-					nextReconcile := time.Now().Add(time.Minute)
-					return ctrl.Result{RequeueAfter: time.Until(nextReconcile)}, err
-				}
-			} else {
-				// Make this dynamic and persist in annotations
-				annotations := deploy.GetAnnotations()
-
+			if _, ok := annotations["kube-snooze/replicas"]; ok {
 				desiredReplicas, err := strconv.ParseInt(annotations["kube-snooze/replicas"], 10, 32)
 				if err != nil {
 					logger.Error(err, "ParsingStoredReplicas")
@@ -130,10 +123,11 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 					deploy.Spec.Replicas = pointer.Int32Ptr(int32(desiredReplicas))
 				}
 			}
+		}
 
-			if err := r.Update(ctx, &deploy); err != nil {
-				return ctrl.Result{}, nil
-			}
+		if err := r.Update(ctx, &deploy); err != nil {
+			logger.Error(err, "ErrorUpdatingDeployment")
+			return ctrl.Result{}, nil
 		}
 	}
 
@@ -146,8 +140,7 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// 	return ctrl.Result{}, err
 	// }
 
-	nextReconcile := time.Now().Add(time.Minute)
-	return ctrl.Result{RequeueAfter: time.Until(nextReconcile)}, nil
+	return ctrl.Result{RequeueAfter: duration}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
