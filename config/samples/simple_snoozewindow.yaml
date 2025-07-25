@@ -4,11 +4,11 @@ metadata:
   name: snooze-nginx
   namespace: kube-snooze-system
 spec:
-  label_selector:
+  labelSelector:
     snooze: enabled
-  snooze_schedule:
-    start_time: "6:20"
-    end_time: "6:25"
+  snoozeSchedule:
+    startTime: "6:20"
+    endTime: "6:25"
     date: "2025-07-20"
   timezone: "UTC"
 
@@ -20,7 +20,6 @@ metadata:
   namespace: kube-snooze-system
   labels:
     app: "test-app"
-    snooze: enabled
   annotations:
     kube-snooze/enabled: "true"
 spec:

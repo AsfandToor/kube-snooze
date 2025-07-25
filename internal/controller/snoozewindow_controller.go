@@ -94,7 +94,7 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	for _, deploy := range deployments.Items {
-		logger.Info("TargetingDeployment", "name", deploy.Name)
+		logger.Info("TargetingDeployment", "name")
 		if isSnoozeActive {
 			replicas := strconv.Itoa(int(*deploy.Spec.Replicas))
 			deploy.Spec.Replicas = pointer.Int32Ptr(0)
