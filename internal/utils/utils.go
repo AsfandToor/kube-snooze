@@ -5,23 +5,23 @@ import (
 	"time"
 )
 
-func IsTimeOngoing(startTime, endTime, date string) (bool, time.Duration, error) {
+func IsTimeOngoing(startTime, endTime, date string) (bool, bool, time.Duration, error) {
 	const dateLayout = "2006-01-02"
 	const timeLayout = "15:04"
 
 	baseDate, err := time.Parse(dateLayout, date)
 	if err != nil {
-		return false, 0, fmt.Errorf("invalid date format: %w", err)
+		return false, false, 0, fmt.Errorf("invalid date format: %w", err)
 	}
 
 	start, err := time.Parse(timeLayout, startTime)
 	if err != nil {
-		return false, 0, fmt.Errorf("invalid start time format: %w", err)
+		return false, false, 0, fmt.Errorf("invalid start time format: %w", err)
 	}
 
 	end, err := time.Parse(timeLayout, endTime)
 	if err != nil {
-		return false, 0, fmt.Errorf("invalid end time format: %w", err)
+		return false, false, 0, fmt.Errorf("invalid end time format: %w", err)
 	}
 
 	startDateTime := time.Date(baseDate.Year(), baseDate.Month(), baseDate.Day(), start.Hour(), start.Minute(), 0, 0, time.Local)
@@ -35,5 +35,5 @@ func IsTimeOngoing(startTime, endTime, date string) (bool, time.Duration, error)
 
 	now := time.Now()
 
-	return now.After(startDateTime) && now.Before(endDateTime), time.Until(endDateTime), nil
+	return now.After(startDateTime) && now.Before(endDateTime), now.After(endDateTime), time.Until(endDateTime), nil
 }

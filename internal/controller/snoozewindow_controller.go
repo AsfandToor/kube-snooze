@@ -77,7 +77,7 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 	logger.Info("Reconciling SnoozeWindow", "name", snoozeWindow.Name, "namespace", snoozeWindow.Namespace)
 
-	isSnoozeActive, duration, err := utils.IsTimeOngoing(snoozeWindow.Spec.SnoozeSchedule.StartTime, snoozeWindow.Spec.SnoozeSchedule.EndTime, snoozeWindow.Spec.SnoozeSchedule.Date)
+	isSnoozeActive, hasWindowPassed, duration, err := utils.IsTimeOngoing(snoozeWindow.Spec.SnoozeSchedule.StartTime, snoozeWindow.Spec.SnoozeSchedule.EndTime, snoozeWindow.Spec.SnoozeSchedule.Date)
 	if err != nil {
 		logger.Error(err, "parsing snooze schedule")
 	}
@@ -92,14 +92,13 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		logger.Error(err, "failed to list deployments")
 		return ctrl.Result{}, err
 	}
-	
-	for _, deploy := range deployments.Items {
-		logger.Info("TargetingDeployment", "name")
-		if isSnoozeActive {
+
+	if isSnoozeActive {
+		for _, deploy := range deployments.Items {
+			logger.Info("SnoozingDeployment", "name", deploy.Name)
 			replicas := strconv.Itoa(int(*deploy.Spec.Replicas))
 			deploy.Spec.Replicas = pointer.Int32Ptr(0)
 
-			// Save deployment replicas in the respective annotations.
 			deploy.SetAnnotations(map[string]string{
 				"kube-snooze/replicas": replicas,
 			})
@@ -109,26 +108,30 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 				nextReconcile := time.Now().Add(time.Minute)
 				return ctrl.Result{RequeueAfter: time.Until(nextReconcile)}, err
 			}
-		} else {
-			// Make this dynamic and persist in annotations
-			annotations := deploy.GetAnnotations()
+		}
 
-			if _, ok := annotations["kube-snooze/replicas"]; ok {
-				desiredReplicas, err := strconv.ParseInt(annotations["kube-snooze/replicas"], 10, 32)
-				if err != nil {
-					logger.Error(err, "ParsingStoredReplicas")
+		return ctrl.Result{RequeueAfter: duration}, nil
+	} else {
+		if hasWindowPassed {
+			for _, deploy := range deployments.Items {
+				annotations := deploy.GetAnnotations()
+
+				if _, ok := annotations["kube-snooze/replicas"]; ok {
+					desiredReplicas, err := strconv.ParseInt(annotations["kube-snooze/replicas"], 10, 32)
+					if err != nil {
+						logger.Error(err, "ParsingStoredReplicas")
+					}
+
+					if desiredReplicas > 0 {
+						deploy.Spec.Replicas = pointer.Int32Ptr(int32(desiredReplicas))
+					}
 				}
 
-				if desiredReplicas > 0 {
-					deploy.Spec.Replicas = pointer.Int32Ptr(int32(desiredReplicas))
-				}
 			}
 		}
 
-		if err := r.Update(ctx, &deploy); err != nil {
-			logger.Error(err, "ErrorUpdatingDeployment")
-			return ctrl.Result{}, nil
-		}
+		// Change to Rerun at the time of the Snooze Start time
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 
 	// Add this block to above part
