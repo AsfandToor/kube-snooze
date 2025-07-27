@@ -82,6 +82,8 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		logger.Error(err, "parsing snooze schedule")
 	}
 
+	logger.Info("Debugger", "isSnoozeActive", isSnoozeActive)
+
 	var deployments appsv1.DeploymentList
 
 	labelSelectors := client.MatchingLabels{
@@ -110,10 +112,12 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			}
 		}
 
+		logger.Info("RequeingScheduler", "interval", duration)
 		return ctrl.Result{RequeueAfter: duration}, nil
 	} else {
 		if hasWindowPassed {
 			for _, deploy := range deployments.Items {
+				logger.Info("RevivingDeployment", "name", deploy.Name)
 				annotations := deploy.GetAnnotations()
 
 				if _, ok := annotations["kube-snooze/replicas"]; ok {
@@ -131,7 +135,8 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 
 		// Change to Rerun at the time of the Snooze Start time
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
+		logger.Info("RequeingScheduler", "interval", "10 seconds")
+		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 	}
 
 	// Add this block to above part

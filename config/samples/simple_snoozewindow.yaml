@@ -20,7 +20,6 @@ metadata:
   namespace: kube-snooze-system
   labels:
     app: "test-app"
-  annotations:
     kube-snooze/enabled: "true"
 spec:
   replicas: 2
