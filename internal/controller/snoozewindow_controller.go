@@ -92,7 +92,7 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		logger.Error(err, "failed to list deployments")
 		return ctrl.Result{}, err
 	}
-
+	
 	for _, deploy := range deployments.Items {
 		logger.Info("TargetingDeployment", "name")
 		if isSnoozeActive {
