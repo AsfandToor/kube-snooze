@@ -82,8 +82,6 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		logger.Error(err, "parsing snooze schedule")
 	}
 
-	logger.Info("Debugger", "isSnoozeActive", isSnoozeActive)
-
 	var deployments appsv1.DeploymentList
 
 	labelSelectors := client.MatchingLabels{
@@ -122,15 +120,20 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		logger.Info("RequeingScheduler", "interval", duration)
 		return ctrl.Result{RequeueAfter: duration}, nil
 	} else {
+		logger.Info("Debug: hasWindowPassed", "hasWindowPassed", hasWindowPassed)
 		if hasWindowPassed {
 			for _, deploy := range deployments.Items {
 				logger.Info("RevivingDeployment", "name", deploy.Name)
 				annotations := deploy.GetAnnotations()
 
-				if _, ok := annotations["kube-snooze/replicas"]; ok {
+				if _, wasSnoozed := annotations["kube-snooze/replicas"]; wasSnoozed {
 					desiredReplicas, err := strconv.ParseInt(annotations["kube-snooze/replicas"], 10, 32)
 					if err != nil {
 						logger.Error(err, "ParsingStoredReplicas")
+					}
+
+					if desiredReplicas == int64(*deploy.Spec.Replicas) {
+						continue
 					}
 
 					if desiredReplicas > 0 {
@@ -138,6 +141,11 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 					}
 				}
 
+				if err := r.Update(ctx, &deploy); err != nil {
+					logger.Error(err, "DeploymentsUpdateFailed")
+					nextReconcile := time.Now().Add(time.Minute)
+					return ctrl.Result{RequeueAfter: time.Until(nextReconcile)}, err
+				}
 			}
 		}
 
