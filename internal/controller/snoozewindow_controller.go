@@ -98,9 +98,16 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if isSnoozeActive {
 		for _, deploy := range deployments.Items {
 			logger.Info("SnoozingDeployment", "name", deploy.Name)
+
+			annotations := deploy.GetAnnotations()
+			if _, alreadySnoozed := annotations["kube-snooze/replicas"]; alreadySnoozed {
+				logger.Info("Deployment already snoozed, skipping", "name", deploy.Name)
+				continue
+			}
+
+			// Storing original replicas
 			replicas := strconv.Itoa(int(*deploy.Spec.Replicas))
 			deploy.Spec.Replicas = pointer.Int32Ptr(0)
-
 			deploy.SetAnnotations(map[string]string{
 				"kube-snooze/replicas": replicas,
 			})
@@ -147,8 +154,6 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	// 	logger.Error(err, "Failed to update status")
 	// 	return ctrl.Result{}, err
 	// }
-
-	return ctrl.Result{RequeueAfter: duration}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
