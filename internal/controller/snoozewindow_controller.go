@@ -22,6 +22,7 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
@@ -34,19 +35,8 @@ import (
 )
 
 const (
-	// Annotation keys
-	SnoozeEnabledAnnotation = "kube-snooze/enabled"
-	SnoozePolicyAnnotation  = "kube-snooze/policy"
-	BackupReplicasKey       = "kube-snooze/backup-replicas"
-	BackupStateKey          = "kube-snooze/backup-state"
-
-	// State constants
-	StateSnoozed = "snoozed"
-	StateAwake   = "awake"
-
-	// Condition types
-	ConditionReady   = "Ready"
-	ConditionSnoozed = "Snoozed"
+	BackupReplicasKey = "kube-snooze/backup-replicas"
+	BackupStateKey    = "kube-snooze/backup-state"
 )
 
 // SnoozeWindowReconciler reconciles a SnoozeWindow object
@@ -83,7 +73,7 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	var deployments appsv1.DeploymentList
-
+	var services corev1.ServiceList
 	labelSelectors := client.MatchingLabels{
 		"kube-snooze/enabled": "true",
 	}
@@ -93,7 +83,13 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
+	if err := r.List(ctx, &services, client.InNamespace(req.Namespace), labelSelectors); err != nil {
+		logger.Error(err, "failed to list services")
+		return ctrl.Result{}, err
+	}
+
 	if isSnoozeActive {
+
 		for _, deploy := range deployments.Items {
 			logger.Info("SnoozingDeployment", "name", deploy.Name)
 
@@ -153,15 +149,10 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		logger.Info("RequeingScheduler", "interval", "10 seconds")
 		return ctrl.Result{RequeueAfter: time.Second * 10}, nil
 	}
+}
 
-	// Add this block to above part
-	// snoozeWindow.Status.SleepyInstances = len(deployments.Items)
-	//
-	// // Update status
-	// if err := r.Status().Update(ctx, snoozeWindow); err != nil {
-	// 	logger.Error(err, "Failed to update status")
-	// 	return ctrl.Result{}, err
-	// }
+func (r *SnoozeWindowReconciler) SnoozeDeployment(ctx context.Context, deploy appsv1.Deployment) (ctrl.Result, error) {
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
