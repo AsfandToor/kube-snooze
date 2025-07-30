@@ -3,26 +3,22 @@ package adapter
 import (
 	"context"
 
+	"codeacme.org/kube-snooze/internal/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type SnoozableResource interface {
-	GetName() string
-	GetNamespace() string
-	GetAnnotations() map[string]string
-	SetAnnotations(annotations map[string]string)
-	IsSnoozed() bool
-	Snooze(ctx context.Context, r client.Client) error
-	Wake(ctx context.Context, r client.Client) error
-	GetResourceType() string
-}
-
 type ResourceManager struct {
-	resources []SnoozableResource
+	resources []types.SnoozableResource
 }
 
-func (rm *ResourceManager) AddResource(resource SnoozableResource) {
+func NewResourceManager() *ResourceManager {
+	return &ResourceManager{
+		resources: make([]types.SnoozableResource, 0),
+	}
+}
+
+func (rm *ResourceManager) AddResource(resource types.SnoozableResource) {
 	rm.resources = append(rm.resources, resource)
 }
 

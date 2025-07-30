@@ -32,12 +32,8 @@ import (
 
 	schedulingv1alpha1 "codeacme.org/kube-snooze/api/v1alpha1"
 	"codeacme.org/kube-snooze/internal/controller/adapter"
+	"codeacme.org/kube-snooze/internal/controller/adapter/deployment"
 	"codeacme.org/kube-snooze/internal/utils"
-)
-
-const (
-	BackupReplicasKey = "kube-snooze/backup-replicas"
-	BackupStateKey    = "kube-snooze/backup-state"
 )
 
 // SnoozeWindowReconciler reconciles a SnoozeWindow object
@@ -151,8 +147,21 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 }
 
-func (r *SnoozeWindowReconciler) buildResourceManager(ctx context.Context, namespace string) *adapter.ResourceManager {
-	return nil
+func (r *SnoozeWindowReconciler) buildResourceManager(ctx context.Context, namespace string) (*adapter.ResourceManager, error) {
+	resourceManager := adapter.NewResourceManager()
+	labelSelectors := client.MatchingLabels{
+		"kube-snooze/enabled": "true",
+	}
+
+	var deployments appsv1.DeploymentList
+	if err := r.List(ctx, &deployments, client.InNamespace(namespace), labelSelectors); err != nil {
+		return nil, err
+	}
+	for _, deploy := range deployments.Items {
+		resourceManager.AddResource(deployment.NewDeploymentAdapter(&deploy))
+	}
+
+	return resourceManager, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
