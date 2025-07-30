@@ -1,8 +1,9 @@
-package controller
+package adapter
 
 import (
 	"context"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -12,8 +13,8 @@ type SnoozableResource interface {
 	GetAnnotations() map[string]string
 	SetAnnotations(annotations map[string]string)
 	IsSnoozed() bool
-	Snooze(ctx context.Context, r *SnoozeWindowReconciler) error
-	Wake(ctx context.Context, r *SnoozeWindowReconciler) error
+	Snooze(ctx context.Context, r client.Client) error
+	Wake(ctx context.Context, r client.Client) error
 	GetResourceType() string
 }
 
@@ -25,7 +26,7 @@ func (rm *ResourceManager) AddResource(resource SnoozableResource) {
 	rm.resources = append(rm.resources, resource)
 }
 
-func (rm *ResourceManager) SnoozeAll(ctx context.Context, r *SnoozeWindowReconciler) error {
+func (rm *ResourceManager) SnoozeAll(ctx context.Context, r client.Client) error {
 	logger := logf.FromContext(ctx)
 
 	for _, resource := range rm.resources {
@@ -51,7 +52,7 @@ func (rm *ResourceManager) SnoozeAll(ctx context.Context, r *SnoozeWindowReconci
 	return nil
 }
 
-func (rm *ResourceManager) WakeAll(ctx context.Context, r *SnoozeWindowReconciler) error {
+func (rm *ResourceManager) WakeAll(ctx context.Context, r client.Client) error {
 	logger := logf.FromContext(ctx)
 
 	for _, resource := range rm.resources {

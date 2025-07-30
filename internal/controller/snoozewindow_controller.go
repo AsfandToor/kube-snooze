@@ -31,6 +31,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	schedulingv1alpha1 "codeacme.org/kube-snooze/api/v1alpha1"
+	"codeacme.org/kube-snooze/internal/controller/adapter"
 	"codeacme.org/kube-snooze/internal/utils"
 )
 
@@ -150,7 +151,7 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 }
 
-func (r *SnoozeWindowReconciler) buildResourceManager(ctx context.Context, namespace string) *ResourceManager {
+func (r *SnoozeWindowReconciler) buildResourceManager(ctx context.Context, namespace string) *adapter.ResourceManager {
 	return nil
 }
 
