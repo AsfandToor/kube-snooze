@@ -89,7 +89,6 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	if isSnoozeActive {
-
 		for _, deploy := range deployments.Items {
 			logger.Info("SnoozingDeployment", "name", deploy.Name)
 
@@ -151,8 +150,8 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 }
 
-func (r *SnoozeWindowReconciler) SnoozeDeployment(ctx context.Context, deploy appsv1.Deployment) (ctrl.Result, error) {
-	return ctrl.Result{}, nil
+func (r *SnoozeWindowReconciler) buildResourceManager(ctx context.Context, namespace string) *ResourceManager {
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
