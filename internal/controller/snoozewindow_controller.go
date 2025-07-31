@@ -18,14 +18,11 @@ package controller
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -69,75 +66,25 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		logger.Error(err, "parsing snooze schedule")
 	}
 
-	var deployments appsv1.DeploymentList
-	var services corev1.ServiceList
-	labelSelectors := client.MatchingLabels{
-		"kube-snooze/enabled": "true",
-	}
-
-	if err := r.List(ctx, &deployments, client.InNamespace(req.Namespace), labelSelectors); err != nil {
-		logger.Error(err, "failed to list deployments")
-		return ctrl.Result{}, err
-	}
-
-	if err := r.List(ctx, &services, client.InNamespace(req.Namespace), labelSelectors); err != nil {
-		logger.Error(err, "failed to list services")
+	resourceManager, err := r.buildResourceManager(ctx, snoozeWindow.Namespace)
+	if err != nil {
+		logger.Error(err, "failed to build resource manager")
 		return ctrl.Result{}, err
 	}
 
 	if isSnoozeActive {
-		for _, deploy := range deployments.Items {
-			logger.Info("SnoozingDeployment", "name", deploy.Name)
-
-			annotations := deploy.GetAnnotations()
-			if _, alreadySnoozed := annotations["kube-snooze/replicas"]; alreadySnoozed {
-				logger.Info("Deployment already snoozed, skipping", "name", deploy.Name)
-				continue
-			}
-
-			// Storing original replicas
-			replicas := strconv.Itoa(int(*deploy.Spec.Replicas))
-			deploy.Spec.Replicas = pointer.Int32Ptr(0)
-			deploy.SetAnnotations(map[string]string{
-				"kube-snooze/replicas": replicas,
-			})
-
-			if err := r.Update(ctx, &deploy); err != nil {
-				logger.Error(err, "DeploymentsUpdateFailed")
-				nextReconcile := time.Now().Add(time.Minute)
-				return ctrl.Result{RequeueAfter: time.Until(nextReconcile)}, err
-			}
+		if err := resourceManager.SnoozeAll(ctx, r.Client); err != nil {
+			logger.Error(err, "failed to snooze resources")
+			return ctrl.Result{}, err
 		}
 
 		logger.Info("RequeingScheduler", "interval", duration)
 		return ctrl.Result{RequeueAfter: duration}, nil
 	} else {
-		logger.Info("Debug: hasWindowPassed", "hasWindowPassed", hasWindowPassed)
 		if hasWindowPassed {
-			for _, deploy := range deployments.Items {
-				logger.Info("RevivingDeployment", "name", deploy.Name)
-				annotations := deploy.GetAnnotations()
-
-				if _, wasSnoozed := annotations["kube-snooze/replicas"]; wasSnoozed {
-					desiredReplicas, err := strconv.ParseInt(annotations["kube-snooze/replicas"], 10, 32)
-					if err != nil {
-						logger.Error(err, "ParsingStoredReplicas")
-					}
-
-					if desiredReplicas == int64(*deploy.Spec.Replicas) {
-						continue
-					}
-
-					if desiredReplicas > 0 {
-						deploy.Spec.Replicas = pointer.Int32Ptr(int32(desiredReplicas))
-					}
-				}
-
-				if err := r.Update(ctx, &deploy); err != nil {
-					logger.Error(err, "DeploymentsUpdateFailed")
-					nextReconcile := time.Now().Add(time.Minute)
-					return ctrl.Result{RequeueAfter: time.Until(nextReconcile)}, err
-				}
+			if err := resourceManager.WakeAll(ctx, r.Client); err != nil {
+				logger.Error(err, "failed to wake resources")
+				return ctrl.Result{}, err
 			}
 		}
 
