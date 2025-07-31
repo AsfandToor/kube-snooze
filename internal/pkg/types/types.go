@@ -3,7 +3,7 @@ package types
 import (
 	"context"
 
-	"codeacme.org/kube-snooze/internal/controller"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type SnoozableResource interface {
@@ -12,7 +12,7 @@ type SnoozableResource interface {
 	GetAnnotations() map[string]string
 	SetAnnotations(annotations map[string]string)
 	IsSnoozed() bool
-	Snooze(ctx context.Context, r *controller.SnoozeWindowReconciler) error
-	Wake(ctx context.Context, r *controller.SnoozeWindowReconciler) error
+	Snooze(ctx context.Context, r client.Client) error
+	Wake(ctx context.Context, r client.Client) error
 	GetResourceType() string
 }
