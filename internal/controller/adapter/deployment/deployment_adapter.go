@@ -56,7 +56,23 @@ func (d *DeploymentAdapter) Snooze(ctx context.Context, r client.Client) error {
 }
 
 func (d *DeploymentAdapter) Wake(ctx context.Context, r client.Client) error {
-	return nil
+	annotations := d.deployment.GetAnnotations()
+	if storedReplicas, exists := annotations[BackupReplicasKey]; exists {
+		desiredReplicas, err := strconv.ParseInt(storedReplicas, 10, 32)
+		if err != nil {
+			return err
+		}
+
+		if desiredReplicas > 0 {
+			d.deployment.Spec.Replicas = pointer.Int32Ptr(int32(desiredReplicas))
+		}
+
+		// Clean up annotation
+		delete(annotations, BackupReplicasKey)
+		d.deployment.SetAnnotations(annotations)
+	}
+
+	return r.Update(ctx, d.deployment)
 }
 
 func (d *DeploymentAdapter) GetResourceType() string {
