@@ -30,9 +30,9 @@ type SnoozeWindowSpec struct {
 type SnoozeScheduleSpec struct {
 	StartTime string   `json:"startTime"`
 	EndTime   string   `json:"endTime"`
-	Days      []string `json:"days,omitempty"`
-	Frequency string   `json:"frequency,omitempty"`
-	Date      string   `json:"date,omitempty"`
+	Days      []string `json:"days,omitempty"`      // Not Implemented
+	Frequency string   `json:"frequency,omitempty"` // Not Implemented
+	Date      string   `json:"date,omitempty"`      // Not Implemented
 }
 
 type SnoozeWindowStatus struct {

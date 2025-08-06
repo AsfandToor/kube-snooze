@@ -60,13 +60,15 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 	logger.Info("Reconciling SnoozeWindow", "name", snoozeWindow.Name, "namespace", snoozeWindow.Namespace)
+	labelSelectors := snoozeWindow.Spec.LabelSelector
 
 	isSnoozeActive, hasWindowPassed, duration, err := utils.IsTimeOngoing(snoozeWindow.Spec.SnoozeSchedule.StartTime, snoozeWindow.Spec.SnoozeSchedule.EndTime, snoozeWindow.Spec.SnoozeSchedule.Date)
 	if err != nil {
 		logger.Error(err, "parsing snooze schedule")
 	}
 
-	resourceManager, err := r.buildResourceManager(ctx, snoozeWindow.Namespace)
+	// TODO: Decouple Resource Finder from buildResourceManager
+	resourceManager, err := r.buildResourceManager(ctx, snoozeWindow.Namespace, labelSelectors)
 	if err != nil {
 		logger.Error(err, "failed to build resource manager")
 		return ctrl.Result{}, err
@@ -94,14 +96,11 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 }
 
-func (r *SnoozeWindowReconciler) buildResourceManager(ctx context.Context, namespace string) (*adapter.ResourceManager, error) {
+func (r *SnoozeWindowReconciler) buildResourceManager(ctx context.Context, namespace string, labelSelectors map[string]string) (*adapter.ResourceManager, error) {
 	resourceManager := adapter.NewResourceManager()
-	labelSelectors := client.MatchingLabels{
-		"kube-snooze/enabled": "true",
-	}
 
 	var deployments appsv1.DeploymentList
-	if err := r.List(ctx, &deployments, client.InNamespace(namespace), labelSelectors); err != nil {
+	if err := r.List(ctx, &deployments, client.InNamespace(namespace), client.MatchingLabels(labelSelectors)); err != nil {
 		return nil, err
 	}
 	for _, deploy := range deployments.Items {

@@ -5,7 +5,7 @@ metadata:
   namespace: kube-snooze-system
 spec:
   labelSelector:
-    snooze: enabled
+    kube-snooze/enabled: "true"
   snoozeSchedule:
     startTime: "6:20"
     endTime: "6:25"
