@@ -29,7 +29,7 @@ import (
 
 	schedulingv1alpha1 "codeacme.org/kube-snooze/api/v1alpha1"
 	"codeacme.org/kube-snooze/internal/controller/adapter"
-	"codeacme.org/kube-snooze/internal/controller/adapter/deployment"
+	"codeacme.org/kube-snooze/internal/controller/adapter/workloads"
 	"codeacme.org/kube-snooze/internal/utils"
 )
 
@@ -104,7 +104,7 @@ func (r *SnoozeWindowReconciler) buildResourceManager(ctx context.Context, names
 		return nil, err
 	}
 	for _, deploy := range deployments.Items {
-		resourceManager.AddResource(deployment.NewDeploymentAdapter(&deploy))
+		resourceManager.AddResource(workloads.NewDeploymentAdapter(&deploy))
 	}
 
 	return resourceManager, nil

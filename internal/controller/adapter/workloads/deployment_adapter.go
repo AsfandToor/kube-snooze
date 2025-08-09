@@ -1,4 +1,4 @@
-package deployment
+package workloads
 
 import (
 	"context"
@@ -7,10 +7,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	BackupReplicasKey = "kube-snooze/replicas"
 )
 
 type DeploymentAdapter struct {
@@ -46,12 +42,12 @@ func (d *DeploymentAdapter) IsSnoozed() bool {
 func (d *DeploymentAdapter) Snooze(ctx context.Context, r client.Client) error {
 	replicas := strconv.Itoa(int(*d.deployment.Spec.Replicas))
 	d.deployment.Spec.Replicas = pointer.Int32Ptr(0)
-	annotations := d.deployment.GetAnnotations()
+	annotations := d.GetAnnotations()
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
 	annotations[BackupReplicasKey] = replicas
-	d.deployment.SetAnnotations(annotations)
+	d.SetAnnotations(annotations)
 	return r.Update(ctx, d.deployment)
 }
 
@@ -69,7 +65,7 @@ func (d *DeploymentAdapter) Wake(ctx context.Context, r client.Client) error {
 
 		// Clean up annotation
 		delete(annotations, BackupReplicasKey)
-		d.deployment.SetAnnotations(annotations)
+		d.SetAnnotations(annotations)
 	}
 
 	return r.Update(ctx, d.deployment)
