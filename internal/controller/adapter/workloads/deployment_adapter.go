@@ -34,7 +34,7 @@ func (d *DeploymentAdapter) SetAnnotations(annotations map[string]string) {
 }
 
 func (d *DeploymentAdapter) IsSnoozed() bool {
-	annotations := d.deployment.GetAnnotations()
+	annotations := d.GetAnnotations()
 	_, isSnoozed := annotations["kube-snooze/replicas"]
 	return isSnoozed
 }
