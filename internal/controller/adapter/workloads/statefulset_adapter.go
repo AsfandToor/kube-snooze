@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/utils/pointer"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -61,7 +60,7 @@ func (s *StatefulSetAdapter) Wake(ctx context.Context, r client.Client) error {
 		}
 
 		if desiredReplicas > 0 {
-			s.statefulset.Spec.Replicas = pointer.Int32(int32(desiredReplicas))
+			s.statefulset.Spec.Replicas = ptr.To(int32(desiredReplicas))
 		}
 
 		delete(annotations, BackupReplicasKey)
