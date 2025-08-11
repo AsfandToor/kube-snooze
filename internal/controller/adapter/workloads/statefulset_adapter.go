@@ -6,6 +6,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -41,7 +42,7 @@ func (s *StatefulSetAdapter) IsSnoozed() bool {
 
 func (s *StatefulSetAdapter) Snooze(ctx context.Context, r client.Client) error {
 	replicas := strconv.Itoa(int(*s.statefulset.Spec.Replicas))
-	s.statefulset.Spec.Replicas = pointer.Int32Ptr(0)
+	s.statefulset.Spec.Replicas = ptr.To[int32](0)
 	annotations := s.GetAnnotations()
 	if annotations == nil {
 		annotations = make(map[string]string)
