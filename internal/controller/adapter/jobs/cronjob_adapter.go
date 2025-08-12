@@ -23,8 +23,8 @@ func (c *CronJobAdapter) GetNamespace() string {
 	return c.cronjob.Namespace
 }
 
-func (c *CronJobAdapter) GetAnnotations() string {
-	return c.cronjob.Namespace
+func (c *CronJobAdapter) GetAnnotations() map[string]string {
+	return c.cronjob.Annotations
 }
 
 func (c *CronJobAdapter) SetAnnotations(annotations map[string]string) {

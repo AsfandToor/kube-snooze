@@ -21,6 +21,7 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -29,6 +30,7 @@ import (
 
 	schedulingv1alpha1 "codeacme.org/kube-snooze/api/v1alpha1"
 	"codeacme.org/kube-snooze/internal/controller/adapter"
+	"codeacme.org/kube-snooze/internal/controller/adapter/jobs"
 	"codeacme.org/kube-snooze/internal/controller/adapter/workloads"
 	"codeacme.org/kube-snooze/internal/utils"
 )
@@ -99,12 +101,38 @@ func (r *SnoozeWindowReconciler) Reconcile(ctx context.Context, req ctrl.Request
 func (r *SnoozeWindowReconciler) buildResourceManager(ctx context.Context, namespace string, labelSelectors map[string]string) (*adapter.ResourceManager, error) {
 	resourceManager := adapter.NewResourceManager()
 
-	var deployments appsv1.DeploymentList
-	if err := r.List(ctx, &deployments, client.InNamespace(namespace), client.MatchingLabels(labelSelectors)); err != nil {
+	// Fetching Workloads
+	var deploymentsList appsv1.DeploymentList
+	if err := r.List(ctx, &deploymentsList, client.InNamespace(namespace), client.MatchingLabels(labelSelectors)); err != nil {
 		return nil, err
 	}
-	for _, deploy := range deployments.Items {
+	for _, deploy := range deploymentsList.Items {
 		resourceManager.AddResource(workloads.NewDeploymentAdapter(&deploy))
+	}
+
+	var statefulsetsList appsv1.StatefulSetList
+	if err := r.List(ctx, &statefulsetsList, client.InNamespace(namespace), client.MatchingLabels(labelSelectors)); err != nil {
+		return nil, err
+	}
+	for _, statefulset := range statefulsetsList.Items {
+		resourceManager.AddResource(workloads.NewStatefulSetAdapter(&statefulset))
+	}
+
+	// Fetching Jobs
+	var jobsList batchv1.JobList
+	if err := r.List(ctx, &jobsList, client.InNamespace(namespace), client.MatchingLabels(labelSelectors)); err != nil {
+		return nil, err
+	}
+	for _, job := range jobsList.Items {
+		resourceManager.AddResource(jobs.NewJobAdapter(&job))
+	}
+
+	var cronjobsList batchv1.CronJobList
+	if err := r.List(ctx, &cronjobsList, client.InNamespace(namespace), client.MatchingLabels(labelSelectors)); err != nil {
+		return nil, err
+	}
+	for _, cronjob := range cronjobsList.Items {
+		resourceManager.AddResource(jobs.NewCronJobAdapter(&cronjob))
 	}
 
 	return resourceManager, nil
