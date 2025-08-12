@@ -13,6 +13,10 @@ namePrefix: kube-snooze-
 #- includeSelectors: true
 #  pairs:
 #    someName: someValue
+images:
+- name: controller
+  newName: ghcr.io/asfandtoor/kube-snooze-controller
+  newTag: v0.1.0
 
 resources:
 - ../crd

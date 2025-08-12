@@ -23,7 +23,7 @@ Kube-Snooze is a Kubernetes operator that intelligently manages your cluster res
 
 ## Installation
 
-`TO BE ADDED`
+`kubectl apply -f https://raw.githubusercontent.com/asfandtoor/kube-snooze/main/releases/v0.1.0/kube-snooze.yaml`
 
 ### Your First SnoozeWindow
 
