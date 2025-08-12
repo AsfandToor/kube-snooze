@@ -60,7 +60,7 @@ func (d *DeploymentAdapter) Wake(ctx context.Context, r client.Client) error {
 		}
 
 		if desiredReplicas > 0 {
-			d.deployment.Spec.Replicas = ptr.To[int32](int32(desiredReplicas))
+			d.deployment.Spec.Replicas = ptr.To(int32(desiredReplicas))
 		}
 
 		// Clean up annotation
